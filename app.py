@@ -1,6 +1,5 @@
-
 import streamlit as st
-from model_1 import movies, similarity, details_movies
+from model_1 import movies, similarity, details_movies, popularity_data
 from filter import all_genres, recommend_movies, movies_1
 
 
@@ -21,24 +20,31 @@ if "recommended_movies" not in st.session_state:
     st.session_state.recommended_movies = []
 
 
-# ---------------- RECOMMENDATION FUNCTION ----------------
+# ---------------- HYBRID RECOMMENDATION FUNCTION ----------------
 
 def recommend(movie):
 
-    index = movies[movies['title'] == movie].index[0]
+    movie_index = movies[movies['title'] == movie].index[0]
 
-    distance = sorted(
-        list(enumerate(similarity[index])),
+    distances = similarity[movie_index]
+
+    movie_list = sorted(
+        list(enumerate(distances)),
         reverse=True,
         key=lambda x: x[1]
-    )
+    )[1:20]
 
-    recommend_list = []
+    recommended = []
 
-    for i in distance[1:6]:
-        recommend_list.append(movies.iloc[i[0]].title)
+    for i in movie_list:
+        recommended.append(movies.iloc[i[0]].title)
 
-    return recommend_list
+    result = popularity_data[popularity_data['title'].isin(recommended)]
+
+    # sort by popularity score
+    result = result.sort_values('popularity', ascending=False)
+
+    return list(result['title'].head(5))
 
 
 # ---------------- SHOW MOVIE DETAILS PAGE ----------------
@@ -57,7 +63,6 @@ def movie_details_page(movie):
 
     st.title(movie)
 
-    # 🎬 Poster
     st.image(movies_data['Poster_Link'], width=300)
 
     st.write("🎬 **Overview**")
@@ -150,6 +155,7 @@ elif st.session_state.page == "recommendations":
 
         with cols[i]:
             st.image(movie_data['Poster_Link'])
+
             if st.button(movie, key=f"movie_{i}"):
                 st.session_state.selected_movie = movie
                 st.session_state.page = "details"
